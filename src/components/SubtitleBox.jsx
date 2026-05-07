@@ -20,6 +20,7 @@ const SubtitleBox = ({ subtitle, onSaveWord, videoRef, targetLanguage }) => {
 
   // Close popup and reset translation when subtitle changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPopup(null);
     if (!subtitle || !targetLanguage || targetLanguage === "none") {
       setTranslatedLine("");
@@ -45,7 +46,7 @@ const SubtitleBox = ({ subtitle, onSaveWord, videoRef, targetLanguage }) => {
       }
     };
     translateText();
-  }, [subtitle, targetLanguage]);
+  }, [subtitle, targetLanguage, setPopup, setTranslatedLine, setTranslating]);
 
   const handleWordHover = useCallback(
     async (word, idx) => {
@@ -57,11 +58,17 @@ const SubtitleBox = ({ subtitle, onSaveWord, videoRef, targetLanguage }) => {
         videoRef.current.pause();
       }
 
-      // If already hovering the same word, do nothing
-      if (popup && popup.anchorIndex === idx) return;
+      // If already hovering the same word, do nothing (read via functional setter)
+      let alreadyActive = false;
+      setPopup((prev) => {
+        if (prev && prev.anchorIndex === idx) {
+          alreadyActive = true;
+          return prev;
+        }
+        return { word: clean, data: null, loading: true, expanded: false, anchorIndex: idx };
+      });
 
-      // Show loading state
-      setPopup({ word: clean, data: null, loading: true, expanded: false, anchorIndex: idx });
+      if (alreadyActive) return;
 
       // Fetch from free Dictionary API directly
       const data = await fetchWordMeaning(clean);
@@ -73,7 +80,7 @@ const SubtitleBox = ({ subtitle, onSaveWord, videoRef, targetLanguage }) => {
         return prev;
       });
     },
-    [popup, videoRef]
+    [videoRef]
   );
 
   const handleExpand = () => {

@@ -40,8 +40,9 @@ const App = () => {
   const [showQuiz,       setShowQuiz]    = useState(false);
   const [currentView,    setCurrentView] = useState("main");
   const [userMenuOpen,   setUserMenuOpen] = useState(false);
-  const [targetLanguage, setTargetLanguage] = useState("none");
-  const [youtubeId,      setYoutubeId]   = useState("");
+  const [targetLanguage] = useState("none");
+  
+
 
   /* ── Derive active subtitle (computed during render) ── */
   const activeSubtitle = useMemo(() => {
@@ -109,7 +110,7 @@ const App = () => {
       return URL.createObjectURL(file);
     });
     setVideoName(file.name);
-    setYoutubeId("");
+
     setCurrentTime(0);
     setSubtitles([]);
     setSavedWords([]);
@@ -145,76 +146,7 @@ const App = () => {
     }
   }, []);
 
-  const handleYouTubeSubmit = async (e) => {
-    e.preventDefault();
-    const url = e.target.elements.ytUrl.value;
-    if (!url) return;
-    
-    // Extract ID
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-      const vid = match[2];
-      setYoutubeId(vid);
-      setVideoSrc(null);
-      setVideoName("YouTube Video");
-      setCurrentTime(0);
-      setSubtitles([]);
-      setSavedWords([]);
-      setShowQuiz(false);
-      setProgress(0);
-      e.target.reset();
 
-      // ── Fetch built-in captions from YouTube ──
-      setTxStatus(STATUS.TRANSCRIBING);
-      setTxMessage("📥 Fetching built-in captions from YouTube — this will be fast…");
-      
-      try {
-        const res = await fetch("/api/transcribe-youtube", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ youtubeUrl: url })
-        });
-        
-        // Check if response is actually JSON
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await res.text();
-          console.error("Non-JSON response:", text);
-          throw new Error("Server returned an invalid response. Please ensure your backend server is running.");
-        }
-
-        const data = await res.json();
-        
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to fetch YouTube subtitles");
-        }
-
-        if (!data.subtitles || data.subtitles.length === 0) {
-          setTxMessage("⚠ No built-in captions found for this video.");
-          setTxStatus(STATUS.DONE);
-          return;
-        }
-
-        setSubtitles(data.subtitles);
-        setTxStatus(STATUS.DONE);
-        setTxMessage(`✅ ${data.subtitles.length} YouTube captions fetched successfully!`);
-
-      } catch (err) {
-        console.error("YouTube Transcription Error:", err);
-        
-        if (err.message.includes("Unexpected token") || err.message.includes("valid JSON")) {
-          setTxMessage("❌ Backend connection error. Please restart your server using 'npm start'.");
-        } else {
-          setTxMessage(`❌ ${err.message}`);
-        }
-      }
-
-      
-    } else {
-      alert("Please enter a valid YouTube URL");
-    }
-  };
 
   const handleTimeUpdate = () => {
     if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
@@ -489,7 +421,7 @@ const App = () => {
             htmlFor="video-upload"
           >
             <span>📁</span>
-            {videoName && !youtubeId
+            {videoName
               ? (videoName.length > 22 ? videoName.slice(0, 20) + "…" : videoName)
               : "Upload"}
             <input
@@ -538,23 +470,22 @@ const App = () => {
 
           {/* Video player */}
           <div className="video-wrapper" ref={wrapperRef}>
-            {(videoSrc || youtubeId) ? (
+            {videoSrc ? (
               <VideoPlayer
                 videoSrc={videoSrc}
-                youtubeId={youtubeId}
                 videoRef={videoRef}
                 onTimeUpdate={handleTimeUpdate}
               />
             ) : (
               <div className="video-placeholder">
                 <div className="placeholder-icon">▶</div>
-                <h3 className="placeholder-title">Upload a video or paste a YouTube link</h3>
+                <h3 className="placeholder-title">Upload a video to begin learning</h3>
                 <p>AI-powered captions will sync in real-time</p>
               </div>
             )}
 
             {/* Custom fullscreen button */}
-            {(videoSrc || youtubeId) && (
+            {videoSrc && (
               <button
                 className="custom-fs-btn"
                 onClick={toggleFullscreen}
@@ -572,7 +503,7 @@ const App = () => {
             )}
           </div>
 
-          {/* Status banner (Visible for both upload and YouTube) */}
+          {/* Status banner */}
           {txStatus !== STATUS.IDLE && (
             <div className={`tx-banner tx-banner--${isProcessing ? "transcribing" : txStatus}`}>
               <div className="tx-left">

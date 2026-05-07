@@ -126,7 +126,7 @@ const Quiz = ({ words, onClose }) => {
         setQuizFinished(true);
       }
     }, 1500);
-  }, [isAnswering, questions, currentIndex]);
+  }, [isAnswering, questions, currentIndex, timeLeft, streak]);
 
   const handleTimeOut = useCallback(() => {
     handleSelect(null); // Time out means wrong answer
