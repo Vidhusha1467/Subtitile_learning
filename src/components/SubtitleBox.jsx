@@ -1,57 +1,83 @@
-/* eslint-disable react/prop-types */
 import { useState, useCallback, useRef, useEffect } from "react";
 import { fetchWordMeaning } from "../utils/dictionaryApi";
 
 /**
  * SubtitleBox — displays the currently active subtitle line.
- * Click a word → compact tooltip with one-line meaning + "Define" / "Save" buttons.
- * "Define" expands to show full definition, part of speech, and example.
+ * Hover a word → tooltip with meaning from the free Dictionary API.
  *
  * Props:
  *   subtitle    : { id, text, start, end } | null
  *   onSaveWord  : (word: string) => void
+ *   videoRef    : ref to video element
+ *   targetLanguage : string
  */
-const SubtitleBox = ({ subtitle, onSaveWord }) => {
+const SubtitleBox = ({ subtitle, onSaveWord, videoRef, targetLanguage }) => {
   const [popup, setPopup] = useState(null);
+  const [translatedLine, setTranslatedLine] = useState("");
+  const [translating, setTranslating] = useState(false);
   // popup: { word, data, loading, expanded, anchorIndex }
   const popupRef = useRef(null);
 
-  // Close popup when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (popupRef.current && !popupRef.current.contains(e.target)) {
-        setPopup(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Close popup when subtitle changes
+  // Close popup and reset translation when subtitle changes
   useEffect(() => {
     setPopup(null);
-  }, [subtitle?.id]);
-
-  const handleWordClick = useCallback(async (word, idx) => {
-    const clean = word.replace(/[^a-zA-Z'-]/g, "");
-    if (!clean) return;
-
-    // If clicking the same word, toggle off
-    if (popup && popup.anchorIndex === idx) {
-      setPopup(null);
+    if (!subtitle || !targetLanguage || targetLanguage === "none") {
+      setTranslatedLine("");
       return;
     }
 
-    // Show loading state
-    setPopup({ word: clean, data: null, loading: true, expanded: false, anchorIndex: idx });
+    const translateText = async () => {
+      setTranslating(true);
+      try {
+        const res = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: subtitle.text, targetLanguage }),
+        });
+        const data = await res.json();
+        if (data.translatedText) {
+          setTranslatedLine(data.translatedText);
+        }
+      } catch (err) {
+        console.error("Translation failed:", err);
+      } finally {
+        setTranslating(false);
+      }
+    };
+    translateText();
+  }, [subtitle, targetLanguage]);
 
-    // Pass the full subtitle text as context
-    const data = await fetchWordMeaning(clean, subtitle?.text || "");
-    setPopup({ word: clean, data, loading: false, expanded: false, anchorIndex: idx });
-  }, [popup, subtitle]);
+  const handleWordHover = useCallback(
+    async (word, idx) => {
+      const clean = word.replace(/[^a-zA-Z'-]/g, "");
+      if (!clean) return;
+
+      // Pause video when word is hovered
+      if (videoRef?.current) {
+        videoRef.current.pause();
+      }
+
+      // If already hovering the same word, do nothing
+      if (popup && popup.anchorIndex === idx) return;
+
+      // Show loading state
+      setPopup({ word: clean, data: null, loading: true, expanded: false, anchorIndex: idx });
+
+      // Fetch from free Dictionary API directly
+      const data = await fetchWordMeaning(clean);
+
+      setPopup((prev) => {
+        if (prev && prev.anchorIndex === idx) {
+          return { ...prev, data, loading: false };
+        }
+        return prev;
+      });
+    },
+    [popup, videoRef]
+  );
 
   const handleExpand = () => {
-    setPopup((prev) => prev ? { ...prev, expanded: true } : prev);
+    setPopup((prev) => (prev ? { ...prev, expanded: true } : prev));
   };
 
   const handleSave = () => {
@@ -72,19 +98,53 @@ const SubtitleBox = ({ subtitle, onSaveWord }) => {
 
   return (
     <div className="subtitle-box">
+      <div className="subtitle-helper">✨ Hover any word to define</div>
       <div className="subtitle-line">
         {words.map((word, idx) => (
-          <span key={idx} className="word-wrapper">
+          <span
+            key={idx}
+            className="word-wrapper"
+            onMouseLeave={() => {
+              window.wordLeaveTimer = setTimeout(() => {
+                setPopup(null);
+                if (videoRef?.current) videoRef.current.play();
+              }, 300);
+            }}
+          >
             <span
               className={`subtitle-word ${popup?.anchorIndex === idx ? "word-active" : ""}`}
-              onClick={() => handleWordClick(word, idx)}
+              style={{ pointerEvents: "auto" }}
+              onMouseEnter={() => {
+                if (window.wordLeaveTimer) clearTimeout(window.wordLeaveTimer);
+                handleWordHover(word, idx);
+              }}
+              onMouseOver={() => {
+                if (window.wordLeaveTimer) clearTimeout(window.wordLeaveTimer);
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const clean = word.replace(/[^a-zA-Z'-]/g, "");
+                if (clean) onSaveWord(clean);
+              }}
             >
               {word}
             </span>
 
-            {/* Popup anchored to this word */}
+            {/* Tooltip anchored to this word */}
             {popup && popup.anchorIndex === idx && (
-              <div className="word-popup" ref={popupRef}>
+              <div
+                className="word-popup"
+                ref={popupRef}
+                onMouseEnter={() => {
+                  if (window.wordLeaveTimer) clearTimeout(window.wordLeaveTimer);
+                }}
+                onMouseLeave={() => {
+                  window.wordLeaveTimer = setTimeout(() => {
+                    setPopup(null);
+                    if (videoRef?.current) videoRef.current.play();
+                  }, 300);
+                }}
+              >
                 {popup.loading ? (
                   <div className="popup-compact">
                     <span className="popup-spinner" />
@@ -131,7 +191,7 @@ const SubtitleBox = ({ subtitle, onSaveWord }) => {
                   </>
                 ) : (
                   <div className="popup-compact popup-notfound">
-                    <span>No definition found for &ldquo;{popup.word}&rdquo;</span>
+                    <span>Meaning not found for &ldquo;{popup.word}&rdquo;</span>
                     <button className="popup-btn popup-btn-save" onClick={handleSave}>
                       💾 Save Anyway
                     </button>
@@ -145,6 +205,27 @@ const SubtitleBox = ({ subtitle, onSaveWord }) => {
           </span>
         ))}
       </div>
+
+      {/* ── Translated Subtitle ── */}
+      {targetLanguage && targetLanguage !== "none" && subtitle?.text && (
+        <div
+          className="translated-subtitle"
+          style={{
+            fontSize: "1.2rem",
+            color: "var(--yellow)",
+            marginTop: "12px",
+            fontWeight: 500,
+            opacity: translating ? 0.5 : 1,
+            fontStyle: "italic",
+            background: "rgba(0,0,0,0.6)",
+            padding: "6px 16px",
+            borderRadius: "8px",
+            display: "inline-block",
+          }}
+        >
+          {translating ? "Translating..." : translatedLine}
+        </div>
+      )}
     </div>
   );
 };

@@ -41,49 +41,7 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 // ─────────────────────────────────────────────────────────────
 app.use("/api", transcribeRouter);
 
-// ─────────────────────────────────────────────────────────────
-// CONTEXTUAL MEANING ROUTE  →  POST /api/meaning
-// ─────────────────────────────────────────────────────────────
-app.post("/api/meaning", async (req, res) => {
-  try {
-    const { word, context } = req.body;
-    if (!word) return res.status(400).json({ error: "word is required" });
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.status(503).json({ error: "GEMINI_API_KEY is not configured on the server." });
-    }
-
-    const prompt = `You are a helpful dictionary. The user is watching a video with the following sentence in the subtitles: "${context}". What does the word "${word}" mean strictly in this specific context? Keep the definition concise but accurate to the context. Also provide the part of speech and a very short example sentence. Respond ONLY with a JSON object in this exact format, with no markdown formatting or backticks: {"word": "${word}", "definition": "...", "partOfSpeech": "...", "example": "..."}`;
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1 }
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Gemini API Error: ${response.status} ${errorData}`);
-    }
-
-    const data = await response.json();
-    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    
-    // Clean markdown if present
-    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    const parsed = JSON.parse(text);
-    res.json(parsed);
-
-  } catch (err) {
-    console.error("Meaning lookup error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// (Meaning lookup is handled directly on the frontend via the free Dictionary API)
 
 // ─────────────────────────────────────────────────────────────
 // USER AUTH

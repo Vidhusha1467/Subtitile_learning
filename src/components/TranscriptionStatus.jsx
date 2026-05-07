@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 // TranscriptionStatus component
 
 /**
@@ -7,9 +6,8 @@
  * Props:
  *   status         : "idle" | "extracting" | "transcribing" | "done" | "error"
  *   message        : string — human-readable status message
- *   subtitleCount  : number
  */
-const TranscriptionStatus = ({ status, message, subtitleCount }) => {
+const TranscriptionStatus = ({ status, message }) => {
   if (status === "idle") return null;
 
   const isProcessing = status === "extracting" || status === "transcribing";

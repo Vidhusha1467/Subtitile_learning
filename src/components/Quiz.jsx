@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect, useCallback } from "react";
 import { fetchWordMeaning } from "../utils/dictionaryApi";
 
@@ -34,7 +33,7 @@ const FUN_DISTRACTORS = [
   "An underwater breathing apparatus for hamsters"
 ];
 
-const TIMER_SECONDS = 15;
+const TIMER_SECONDS = 30;
 
 const Quiz = ({ words, onClose }) => {
   const [questions, setQuestions] = useState([]);
@@ -43,6 +42,9 @@ const Quiz = ({ words, onClose }) => {
   // State machine for gameplay
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [maxStreak, setMaxStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
   const [selectedOpt, setSelectedOpt] = useState(null);
   const [isAnswering, setIsAnswering] = useState(false);
@@ -81,15 +83,36 @@ const Quiz = ({ words, onClose }) => {
 
     const q = questions[currentIndex];
     const isCorrect = option === q.correctDef;
+    let earnedPoints = 0;
+    let isFast = false;
 
-    if (isCorrect) setScore(s => s + 1);
+    if (isCorrect) {
+      setCorrectCount(c => c + 1);
+      earnedPoints = 10; // Base points
+      if (timeLeft >= 20) {
+        earnedPoints += 5; // Speed bonus (answered within 10s)
+        isFast = true;
+      }
+      earnedPoints += streak * 2; // Streak combo bonus
+
+      setStreak(s => {
+        const newStreak = s + 1;
+        setMaxStreak(m => Math.max(m, newStreak));
+        return newStreak;
+      });
+      setScore(s => s + earnedPoints);
+    } else {
+      setStreak(0);
+    }
 
     // Log answer for the review screen
     setAnswersLog(prev => [...prev, {
       word: q.word,
       correct: isCorrect,
       selected: option || "Timeout ⏳",
-      correctDef: q.correctDef
+      correctDef: q.correctDef,
+      points: earnedPoints,
+      fast: isFast
     }]);
 
     // Wait 1.5s for visual feedback before moving to next question
@@ -113,22 +136,26 @@ const Quiz = ({ words, onClose }) => {
   useEffect(() => {
     if (loading || quizFinished || isAnswering || questions.length === 0) return;
 
-    if (timeLeft === 0) {
-      handleTimeOut();
-      return;
-    }
-
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleTimeOut();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft, loading, quizFinished, isAnswering, questions, handleTimeOut]);
+  }, [loading, quizFinished, isAnswering, questions, handleTimeOut]);
 
   const handleRetry = () => {
     setCurrentIndex(0);
     setScore(0);
+    setCorrectCount(0);
+    setStreak(0);
+    setMaxStreak(0);
     setTimeLeft(TIMER_SECONDS);
     setSelectedOpt(null);
     setIsAnswering(false);
@@ -151,7 +178,7 @@ const Quiz = ({ words, onClose }) => {
 
   // Finished Screen
   if (quizFinished) {
-    const percentage = Math.round((score / questions.length) * 100);
+    const percentage = Math.round((correctCount / questions.length) * 100);
     let message = "Keep learning! 📚";
     let emoji = "🙂";
     if (percentage === 100) { message = "Flawless Victory! 👑"; emoji = "🎉"; }
@@ -166,9 +193,19 @@ const Quiz = ({ words, onClose }) => {
             <button className="close-btn" onClick={onClose}>✕</button>
           </div>
           <div className="quiz-results">
-            <div className={`score-circle ${percentage >= 80 ? "perfect" : percentage >= 50 ? "good" : "low"}`}>
-              <span className="score-num">{score}</span>
-              <span className="score-denom">/{questions.length}</span>
+            <div className="quiz-stats-grid" style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '20px' }}>
+              <div className={`score-circle ${percentage >= 80 ? "perfect" : percentage >= 50 ? "good" : "low"}`}>
+                <span className="score-num">{percentage}%</span>
+                <span className="score-denom">Accuracy</span>
+              </div>
+              <div className="score-circle good" style={{ background: 'var(--bg-lighter)' }}>
+                <span className="score-num" style={{ color: 'var(--accent)' }}>{score}</span>
+                <span className="score-denom">Points</span>
+              </div>
+              <div className="score-circle" style={{ background: 'var(--bg-lighter)' }}>
+                <span className="score-num" style={{ color: '#ff9800' }}>{maxStreak}</span>
+                <span className="score-denom">Best Streak</span>
+              </div>
             </div>
             <h3 className="score-label" style={{ fontSize: '1.4rem', color: 'var(--accent)', marginTop: '10px' }}>
               {message}
@@ -207,12 +244,18 @@ const Quiz = ({ words, onClose }) => {
           <div className="quiz-progress-fill" style={{ width: `${progressPct}%` }} />
         </div>
 
-        <div className="quiz-header">
-          <h2>Question {currentIndex + 1} of {questions.length}</h2>
+        <div className="quiz-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <h2>Q{currentIndex + 1}/{questions.length}</h2>
+            {streak >= 2 && <span className="q-streak pulse-anim" style={{ color: '#ff9800', fontWeight: 'bold' }}>🔥 {streak}x Combo!</span>}
+          </div>
           <div className={`timer-badge ${timeLeft <= 5 ? "timer-danger pulse-anim" : ""}`}>
             ⏳ {timeLeft}s
           </div>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <span className="q-score" style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.2rem' }}>🌟 {score}</span>
+            <button className="close-btn" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         <div className="quiz-body quiz-play-area">
@@ -253,9 +296,17 @@ const Quiz = ({ words, onClose }) => {
         {isAnswering && selectedOpt !== null && (
           <div className={`feedback-bar ${selectedOpt === q.correctDef ? 'feedback-correct' : 'feedback-wrong'}`}>
             <span className="feedback-icon">{selectedOpt === q.correctDef ? '🎉' : '💥'}</span>
-            <span className="feedback-text">
-              {selectedOpt === q.correctDef ? "Spot on! That's correct." : "Oops! Not quite right."}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="feedback-text">
+                {selectedOpt === q.correctDef ? "Spot on! That's correct." : "Oops! Not quite right."}
+              </span>
+              {selectedOpt === q.correctDef && answersLog.length > 0 && (
+                <span style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '2px' }}>
+                  +{answersLog[answersLog.length - 1]?.points} points 
+                  {answersLog[answersLog.length - 1]?.fast && " ⚡ (Speed Bonus!)"}
+                </span>
+              )}
+            </div>
           </div>
         )}
         {isAnswering && selectedOpt === null && (

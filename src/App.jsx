@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import SubtitleBox from "./components/SubtitleBox";
 import SavedWords from "./components/SavedWords";
 import Quiz from "./components/Quiz";
+import VideoPlayer from "./components/VideoPlayer";
 import "./index.css";
 
 // API base path: Vite proxy forwards /api/* → http://localhost:3000/api/*
@@ -37,6 +38,10 @@ const App = () => {
   const [progress,       setProgress]    = useState(0);
   const [savedWords,     setSavedWords]  = useState([]);
   const [showQuiz,       setShowQuiz]    = useState(false);
+  const [currentView,    setCurrentView] = useState("main");
+  const [userMenuOpen,   setUserMenuOpen] = useState(false);
+  const [targetLanguage, setTargetLanguage] = useState("none");
+  const [youtubeId,      setYoutubeId]   = useState("");
 
   /* ── Derive active subtitle (computed during render) ── */
   const activeSubtitle = useMemo(() => {
@@ -104,6 +109,7 @@ const App = () => {
       return URL.createObjectURL(file);
     });
     setVideoName(file.name);
+    setYoutubeId("");
     setCurrentTime(0);
     setSubtitles([]);
     setSavedWords([]);
@@ -138,6 +144,77 @@ const App = () => {
       setTxMessage(`❌ ${err.message}`);
     }
   }, []);
+
+  const handleYouTubeSubmit = async (e) => {
+    e.preventDefault();
+    const url = e.target.elements.ytUrl.value;
+    if (!url) return;
+    
+    // Extract ID
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      const vid = match[2];
+      setYoutubeId(vid);
+      setVideoSrc(null);
+      setVideoName("YouTube Video");
+      setCurrentTime(0);
+      setSubtitles([]);
+      setSavedWords([]);
+      setShowQuiz(false);
+      setProgress(0);
+      e.target.reset();
+
+      // ── Fetch built-in captions from YouTube ──
+      setTxStatus(STATUS.TRANSCRIBING);
+      setTxMessage("📥 Fetching built-in captions from YouTube — this will be fast…");
+      
+      try {
+        const res = await fetch("/api/transcribe-youtube", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ youtubeUrl: url })
+        });
+        
+        // Check if response is actually JSON
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await res.text();
+          console.error("Non-JSON response:", text);
+          throw new Error("Server returned an invalid response. Please ensure your backend server is running.");
+        }
+
+        const data = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to fetch YouTube subtitles");
+        }
+
+        if (!data.subtitles || data.subtitles.length === 0) {
+          setTxMessage("⚠ No built-in captions found for this video.");
+          setTxStatus(STATUS.DONE);
+          return;
+        }
+
+        setSubtitles(data.subtitles);
+        setTxStatus(STATUS.DONE);
+        setTxMessage(`✅ ${data.subtitles.length} YouTube captions fetched successfully!`);
+
+      } catch (err) {
+        console.error("YouTube Transcription Error:", err);
+        
+        if (err.message.includes("Unexpected token") || err.message.includes("valid JSON")) {
+          setTxMessage("❌ Backend connection error. Please restart your server using 'npm start'.");
+        } else {
+          setTxMessage(`❌ ${err.message}`);
+        }
+      }
+
+      
+    } else {
+      alert("Please enter a valid YouTube URL");
+    }
+  };
 
   const handleTimeUpdate = () => {
     if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
@@ -182,63 +259,90 @@ const App = () => {
           </div>
         </header>
 
-        <div className="auth-container">
-          <div className="auth-card">
-            <div className="auth-header">
-              <h2>
-                {authMode === "login" ? "Welcome Back"
-                  : authMode === "signup" ? "Create Account"
-                  : "Reset Password"}
-              </h2>
-              <p className="auth-subtitle">
-                {authMode === "login"
-                  ? "Sign in to start learning with subtitles"
-                  : authMode === "signup"
-                  ? "Join SubLearn and start your vocabulary journey"
-                  : "Enter your email and a new password"}
-              </p>
+        <div className="landing-page">
+          {/* Left Column: Hero Content */}
+          <div className="landing-left">
+            <div className="hero-badge">✨ SubLearn 2.0 is Here</div>
+            <h1 className="hero-title">
+              Master English through your <span className="hero-highlight">favorite videos</span>
+            </h1>
+            <p className="hero-desc">
+              Upload any video, let AI generate interactive subtitles, click any word to instantly learn its meaning, and take gamified quizzes to build your vocabulary.
+            </p>
+            <div className="hero-features">
+              <div className="hf-item">
+                <span className="hf-icon">🤖</span>
+                <span className="hf-text">Smart AI Transcription</span>
+              </div>
+              <div className="hf-item">
+                <span className="hf-icon">👆</span>
+                <span className="hf-text">Interactive Hover Dictionary</span>
+              </div>
+              <div className="hf-item">
+                <span className="hf-icon">🎮</span>
+                <span className="hf-text">Gamified Vocabulary Quizzes</span>
+              </div>
             </div>
+          </div>
 
-            <form className="auth-form" onSubmit={handleAuthSubmit} key={authMode}>
-              {authMode === "signup" && (
+          {/* Right Column: Auth Card */}
+          <div className="landing-right">
+            <div className="auth-card">
+              <div className="auth-header">
+                <h2>
+                  {authMode === "login" ? "Welcome Back"
+                    : authMode === "signup" ? "Create Account"
+                    : "Reset Password"}
+                </h2>
+                <p className="auth-subtitle">
+                  {authMode === "login"
+                    ? "Sign in to start learning with subtitles"
+                    : authMode === "signup"
+                    ? "Join SubLearn and start your vocabulary journey"
+                    : "Enter your email and a new password"}
+                </p>
+              </div>
+
+              <form className="auth-form" onSubmit={handleAuthSubmit} key={authMode} autoComplete="off">
+                {authMode === "signup" && (
+                  <div className="form-group">
+                    <label htmlFor="auth-name">Name</label>
+                    <input
+                      id="auth-name"
+                      type="text"
+                      placeholder="Your name"
+                      autoComplete="off"
+                      value={authForm.name}
+                      onChange={(e) => setAuthForm(p => ({ ...p, name: e.target.value }))}
+                      required
+                    />
+                  </div>
+                )}
+
                 <div className="form-group">
-                  <label htmlFor="auth-name">Name</label>
+                  <label htmlFor="auth-email">Email</label>
                   <input
-                    id="auth-name"
-                    type="text"
-                    placeholder="Your name"
-                    autoComplete="name"
-                    value={authForm.name}
-                    onChange={(e) => setAuthForm(p => ({ ...p, name: e.target.value }))}
+                    id="auth-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="new-password"
+                    value={authForm.email}
+                    onChange={(e) => setAuthForm(p => ({ ...p, email: e.target.value }))}
                     required
                   />
                 </div>
-              )}
 
-              <div className="form-group">
-                <label htmlFor="auth-email">Email</label>
-                <input
-                  id="auth-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  value={authForm.email}
-                  onChange={(e) => setAuthForm(p => ({ ...p, email: e.target.value }))}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="auth-password">
-                  {authMode === "forgot" ? "New Password" : "Password"}
-                </label>
-                <input
-                  id="auth-password"
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete={authMode === "login" ? "current-password" : "new-password"}
-                  value={authForm.password}
-                  onChange={(e) => setAuthForm(p => ({ ...p, password: e.target.value }))}
+                <div className="form-group">
+                  <label htmlFor="auth-password">
+                    {authMode === "forgot" ? "New Password" : "Password"}
+                  </label>
+                  <input
+                    id="auth-password"
+                    type="password"
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm(p => ({ ...p, password: e.target.value }))}
                   required
                   minLength={4}
                 />
@@ -285,6 +389,75 @@ const App = () => {
                 </p>
               )}
             </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── How It Works Page ── */
+  if (currentView === "how-to") {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <div className="header-left">
+            <div className="logo" onClick={() => setCurrentView("main")} style={{ cursor: "pointer" }}>
+              <span className="logo-icon">🎬</span>
+              <span className="logo-text">SubLearn</span>
+            </div>
+            <p className="tagline">AI-Powered Subtitle Learning</p>
+          </div>
+          <div className="header-right">
+            <button className="upload-btn" onClick={() => setCurrentView("main")}>
+              ← Back to App
+            </button>
+          </div>
+        </header>
+
+        <div className="how-to-page" style={{ maxWidth: "1000px", margin: "60px auto", padding: "0 32px" }}>
+          <div style={{ textAlign: "center", marginBottom: "50px" }}>
+            <div className="hero-badge" style={{ marginBottom: "16px" }}>✨ SubLearn 2.0</div>
+            <h1 style={{ fontSize: "3rem", marginBottom: "16px", color: "var(--text-primary)", letterSpacing: "-1px" }}>
+              How <span className="hero-highlight">It Works</span>
+            </h1>
+            <p style={{ color: "var(--text-muted)", fontSize: "1.1rem", maxWidth: "600px", margin: "0 auto", lineHeight: 1.6 }}>
+              A modern, AI-powered way to master new vocabulary by immersing yourself in your favorite videos.
+            </p>
+          </div>
+
+          <div className="feature-grid">
+            <div className="feature-card">
+              <div className="fc-icon">📁</div>
+              <h3>1. Upload & Process</h3>
+              <p>Upload any video file. We securely extract the audio and process it directly through AssemblyAI's advanced models.</p>
+            </div>
+            
+            <div className="feature-card">
+              <div className="fc-icon">🤖</div>
+              <h3>2. AI Transcription</h3>
+              <p>Experience ultra-accurate speech-to-text with word-level timestamps. Captions sync perfectly with your video playback.</p>
+            </div>
+            
+            <div className="feature-card">
+              <div className="fc-icon">👆</div>
+              <h3>3. Interactive Dictionary</h3>
+              <p>Hover over any word in the subtitles to instantly view its meaning, context, and part of speech without pausing.</p>
+            </div>
+
+            <div className="feature-card">
+              <div className="fc-icon">💾</div>
+              <h3>4. Personal Vocabulary</h3>
+              <p>Click on any word to save it to your personal vocabulary list. Your progress is automatically stored in your user profile.</p>
+            </div>
+
+            <div className="feature-card fc-wide">
+              <div className="fc-icon quiz-icon">🎮</div>
+              <div className="fc-content">
+                <h3>5. Gamified Quiz & Retention</h3>
+                <p>Once you've saved enough words, hit <strong>Take Quiz</strong>. Test your memory with speed bonuses, accuracy tracking, and visual feedback to lock the words into your long-term memory!</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -306,14 +479,19 @@ const App = () => {
         </div>
 
         <div className="header-right">
+
+
+          <button className="upload-btn" onClick={() => setCurrentView("how-to")}>
+            💡 How It Works
+          </button>
           <label
             className={`upload-btn ${isProcessing ? "upload-btn-disabled" : ""}`}
             htmlFor="video-upload"
           >
             <span>📁</span>
-            {videoName
+            {videoName && !youtubeId
               ? (videoName.length > 22 ? videoName.slice(0, 20) + "…" : videoName)
-              : "Upload Video"}
+              : "Upload"}
             <input
               id="video-upload"
               type="file"
@@ -324,16 +502,31 @@ const App = () => {
             />
           </label>
 
-          <div className="user-badge">
-            <span className="user-avatar">{user.name?.[0]?.toUpperCase() || "U"}</span>
-            <span className="user-name">{user.name || user.email}</span>
-            <button
-              className="logout-btn"
-              onClick={() => setUser(null)}
-              title="Logout"
-            >
-              ↗
-            </button>
+          <div className="user-badge-container">
+            <div className="user-badge" onClick={() => setUserMenuOpen(!userMenuOpen)}>
+              <span className="user-avatar">{user.name?.[0]?.toUpperCase() || "U"}</span>
+              <span className="user-name">{user.name || user.email}</span>
+              <span className="info-card-chevron" style={{ transform: userMenuOpen ? "rotate(180deg)" : "rotate(0)", marginLeft: '4px' }}>▼</span>
+            </div>
+
+            {userMenuOpen && (
+              <div className="user-dropdown">
+                <div className="user-dropdown-header">
+                  <span className="ud-name">{user.name || "User"}</span>
+                  <span className="ud-email">{user.email}</span>
+                </div>
+                <div className="ud-stat">
+                  <span>Saved Words</span>
+                  <strong>{savedWords.length}</strong>
+                </div>
+                <button
+                  className="ud-logout"
+                  onClick={() => { setUser(null); setUserMenuOpen(false); }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -345,24 +538,23 @@ const App = () => {
 
           {/* Video player */}
           <div className="video-wrapper" ref={wrapperRef}>
-            {videoSrc ? (
-              <video
-                ref={videoRef}
-                src={videoSrc}
-                controls
-                className="video-el"
+            {(videoSrc || youtubeId) ? (
+              <VideoPlayer
+                videoSrc={videoSrc}
+                youtubeId={youtubeId}
+                videoRef={videoRef}
                 onTimeUpdate={handleTimeUpdate}
               />
             ) : (
               <div className="video-placeholder">
                 <div className="placeholder-icon">▶</div>
-                <h3 className="placeholder-title">Upload a video to get started</h3>
+                <h3 className="placeholder-title">Upload a video or paste a YouTube link</h3>
                 <p>AI-powered captions will sync in real-time</p>
               </div>
             )}
 
             {/* Custom fullscreen button */}
-            {videoSrc && (
+            {(videoSrc || youtubeId) && (
               <button
                 className="custom-fs-btn"
                 onClick={toggleFullscreen}
@@ -375,12 +567,12 @@ const App = () => {
             {/* Subtitle overlay inside video */}
             {subtitles.length > 0 && (
               <div className="subtitle-overlay">
-                <SubtitleBox subtitle={activeSubtitle} onSaveWord={handleSaveWord} />
+                <SubtitleBox subtitle={activeSubtitle} onSaveWord={handleSaveWord} videoRef={videoRef} targetLanguage={targetLanguage} />
               </div>
             )}
           </div>
 
-          {/* Status banner */}
+          {/* Status banner (Visible for both upload and YouTube) */}
           {txStatus !== STATUS.IDLE && (
             <div className={`tx-banner tx-banner--${isProcessing ? "transcribing" : txStatus}`}>
               <div className="tx-left">
@@ -457,17 +649,7 @@ const App = () => {
             </div>
           )}
 
-          <div className="info-card">
-            <h3>💡 How It Works</h3>
-            <ol className="how-to-list">
-              <li>Upload any video — audio is extracted automatically.</li>
-              <li>AssemblyAI transcribes speech with timestamps.</li>
-              <li>Captions sync live as your video plays.</li>
-              <li>Hover any word for its dictionary meaning.</li>
-              <li>Click a word to save it to your list.</li>
-              <li>Hit <strong>Take Quiz</strong> to test yourself!</li>
-            </ol>
-          </div>
+
 
           {txStatus === STATUS.IDLE && (
             <div className="whisper-card">

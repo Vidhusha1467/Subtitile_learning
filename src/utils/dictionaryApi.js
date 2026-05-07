@@ -1,38 +1,29 @@
 /**
- * Fetches the contextual definition of a word based on the video subtitle sentence.
- * Returns an object: { word, definition, partOfSpeech, example }
- * Returns null if the word is not found or the request fails.
+ * Fetches the meaning of a word from the free Dictionary API.
+ * Returns: { word, definition, partOfSpeech, example } or null.
  */
-export const fetchWordMeaning = async (word, context = "") => {
+export const fetchWordMeaning = async (word) => {
   const clean = word.toLowerCase().replace(/[^a-z'-]/g, "");
   if (!clean) return null;
 
   try {
-    const res = await fetch("/api/meaning", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word: clean, context }),
-    });
-    
-    if (!res.ok) {
-      // Fallback to basic dictionary if backend fails (e.g. no API key)
-      const fallbackRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${clean}`);
-      if (!fallbackRes.ok) return null;
-      const data = await fallbackRes.json();
-      const entry = data[0];
-      const meaning = entry?.meanings?.[0];
-      const def = meaning?.definitions?.[0];
+    const res = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(clean)}`
+    );
 
-      return {
-        word: entry?.word ?? clean,
-        partOfSpeech: meaning?.partOfSpeech ?? "",
-        definition: def?.definition ?? "No definition found.",
-        example: def?.example ?? null,
-      };
-    }
-    
+    if (!res.ok) return null;
+
     const data = await res.json();
-    return data;
+    const entry = data[0];
+    const meaning = entry?.meanings?.[0];
+    const def = meaning?.definitions?.[0];
+
+    return {
+      word: entry?.word ?? clean,
+      partOfSpeech: meaning?.partOfSpeech ?? "",
+      definition: def?.definition ?? "Meaning not found",
+      example: def?.example ?? null,
+    };
   } catch {
     return null;
   }
