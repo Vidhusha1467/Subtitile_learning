@@ -1,0 +1,195 @@
+import { createContext, useContext, useState, useEffect } from "react";
+
+/* ── All translations ── */
+export const TRANSLATIONS = {
+  en: {
+    // Home page
+    badge:      "✨ AI-Powered Subtitle Learning",
+    title1:     "Learn English through your",
+    title2:     "favorite videos",
+    sub:        "Upload any video · AI captions · Click words to learn · Quiz yourself",
+    pills:      ["🤖 AI Transcription", "👆 Hover Dictionary", "🎮 Vocab Quizzes", "🌐 YouTube Support"],
+    getStarted: "🚀 Get Started Free",
+    signIn:     "Sign In →",
+    // Theme
+    light: "☀️ Light",
+    dark:  "🌙 Dark",
+    // Dropdowns
+    settings:       "Settings",
+    more:           "More",
+    account:        "👤 Account",
+    notifications:  "🔔 Notifications",
+    language:       "🌐 Language",
+    privacy:        "🔒 Privacy",
+    helpFaq:        "❓ Help & FAQ",
+    contactUs:      "📧 Contact Us",
+    rateApp:        "⭐ Rate App",
+    // Account modal
+    accountTitle:   "Account",
+    displayName:    "Display Name",
+    email:          "Email",
+    password:       "Password",
+    saveChanges:    "💾 Save Changes",
+    saved:          "✅ Saved!",
+    logOut:         "🚪 Log Out",
+    // Notifications
+    notifTitle:     "Notifications",
+    notifInfo:      "Manage what notifications you receive from SubLearn.",
+    notifLabels:    ["🔔 New word suggestions", "📧 Weekly progress email", "🎮 Quiz reminders", "📢 App updates", "🏆 Achievement alerts"],
+    // Language
+    langTitle:      "Language",
+    langInfo:       "Choose the language you want to learn in.",
+    // Privacy
+    privacyTitle:   "Privacy",
+    privacyInfo:    "Your data is encrypted and never sold to third parties.",
+    analyticsCookies: "🍪 Analytics cookies",
+    usageStats:     "📊 Usage statistics",
+    dangerZone:     "Danger Zone",
+    deleteData:     "🗑️ Delete My Data",
+    deleteConfirm:  "Are you sure? This cannot be undone.",
+    yes:            "Yes, Delete",
+    cancel:         "Cancel",
+    // Help
+    helpTitle:      "Help & FAQ",
+    helpInfo:       "Frequently asked questions about SubLearn.",
+    faqs: [
+      ["How do I upload a video?", "Click the Upload button on the main page and select a local video file, or paste a YouTube URL into the input field."],
+      ["How does the dictionary work?", "While subtitles play, hover or click any word to instantly see its definition, part of speech, and an example sentence."],
+      ["How do I save words?", "Click the 💾 Save Word button inside the word popup. All saved words appear in your Vocabulary panel."],
+      ["How do I take a quiz?", "After saving words, click 'Take Quiz' in the saved words panel. You'll get multiple-choice questions based on your vocabulary."],
+      ["Does it work with YouTube?", "Yes! Paste any YouTube URL and SubLearn will automatically fetch the captions and make them interactive."],
+    ],
+    // Contact
+    contactTitle:   "Contact Us",
+    contactInfo:    "Have a question or feedback? We'd love to hear from you!",
+    yourName:       "Your Name",
+    namePlaceholder:"Enter your name",
+    emailPlaceholder:"you@example.com",
+    messagePlaceholder:"Write your message...",
+    sendMessage:    "📧 Send Message",
+    messageSent:    "Message Sent!",
+    replyInfo:      "We'll get back to you within 24 hours.",
+    // Rate
+    rateTitle:      "Rate App",
+    rateInfo:       "How are you enjoying SubLearn?",
+    rateLabels:     ["", "Poor 😔", "Fair 😐", "Good 🙂", "Great 😊", "Amazing 🤩"],
+    commentsLabel:  "Comments (optional)",
+    commentPlaceholder: "Tell us more...",
+    submitRating:   "Submit Rating",
+    thankYou:       "Thank you!",
+    feedbackHelps:  "Your feedback helps us improve.",
+    // Toasts
+    toastSaved:     "✅ Account saved!",
+    toastDeleted:   "🗑️ Data deleted",
+    toastSent:      "📧 Message sent! We'll reply soon.",
+    toastEmptyFields: "⚠️ Please fill all fields",
+    toastNoStar:    "⚠️ Please select a star rating",
+    toastStarThanks: (n) => `⭐ Thanks for rating us ${n} stars!`,
+  },
+
+  ta: {
+    // Home page
+    badge:      "✨ AI-சக்தி வாய்ந்த வீடியோ கற்றல்",
+    title1:     "உங்கள் விருப்பமான வீடியோக்கள் மூலம்",
+    title2:     "ஆங்கிலம் கற்றுக்கொள்ளுங்கள்",
+    sub:        "எந்த வீடியோவையும் பதிவேற்றுங்கள் · AI வசனங்கள் · வார்த்தைகளை கற்கவும் · வினாடி வினா எழுதவும்",
+    pills:      ["🤖 AI படியெடுப்பு", "👆 நேரடி அகராதி", "🎮 சொல் வினாடி வினா", "🌐 YouTube ஆதரவு"],
+    getStarted: "🚀 இலவசமாக தொடங்குங்கள்",
+    signIn:     "உள்நுழைய →",
+    // Theme
+    light: "☀️ வெளிர் நிறம்",
+    dark:  "🌙 இருண்ட நிறம்",
+    // Dropdowns
+    settings:       "அமைப்புகள்",
+    more:           "மேலும்",
+    account:        "👤 கணக்கு",
+    notifications:  "🔔 அறிவிப்புகள்",
+    language:       "🌐 மொழி",
+    privacy:        "🔒 தனியுரிமை",
+    helpFaq:        "❓ உதவி & கேள்விகள்",
+    contactUs:      "📧 தொடர்பு கொள்ளுங்கள்",
+    rateApp:        "⭐ பயன்பாட்டை மதிப்பிடுங்கள்",
+    // Account modal
+    accountTitle:   "கணக்கு",
+    displayName:    "காட்சி பெயர்",
+    email:          "மின்னஞ்சல்",
+    password:       "கடவுச்சொல்",
+    saveChanges:    "💾 மாற்றங்களை சேமி",
+    saved:          "✅ சேமிக்கப்பட்டது!",
+    logOut:         "🚪 வெளியேறு",
+    // Notifications
+    notifTitle:     "அறிவிப்புகள்",
+    notifInfo:      "SubLearn-இலிருந்து நீங்கள் பெறும் அறிவிப்புகளை நிர்வகிக்கவும்.",
+    notifLabels:    ["🔔 புதிய வார்த்தை பரிந்துரைகள்", "📧 வாராந்திர முன்னேற்ற மின்னஞ்சல்", "🎮 வினாடி வினா நினைவூட்டல்", "📢 பயன்பாட்டு புதுப்பிப்புகள்", "🏆 சாதனை விழிப்பூட்டல்கள்"],
+    // Language
+    langTitle:      "மொழி",
+    langInfo:       "நீங்கள் கற்க விரும்பும் மொழியை தேர்ந்தெடுக்கவும்.",
+    // Privacy
+    privacyTitle:   "தனியுரிமை",
+    privacyInfo:    "உங்கள் தரவு மறைகுறியாக்கப்பட்டுள்ளது மற்றும் மூன்றாம் தரப்பினருக்கு விற்கப்படுவதில்லை.",
+    analyticsCookies: "🍪 பகுப்பாய்வு குக்கீகள்",
+    usageStats:     "📊 பயன்பாட்டு புள்ளிவிவரங்கள்",
+    dangerZone:     "ஆபத்தான பகுதி",
+    deleteData:     "🗑️ என் தரவை நீக்கு",
+    deleteConfirm:  "நீங்கள் உறுதியாக இருக்கிறீர்களா? இதை மாற்ற முடியாது.",
+    yes:            "ஆம், நீக்கு",
+    cancel:         "ரத்து செய்",
+    // Help
+    helpTitle:      "உதவி & கேள்விகள்",
+    helpInfo:       "SubLearn பற்றி அடிக்கடி கேட்கப்படும் கேள்விகள்.",
+    faqs: [
+      ["வீடியோவை எப்படி பதிவேற்றுவது?", "பிரதான பக்கத்தில் பதிவேற்று பொத்தானை கிளிக் செய்து உள்ளூர் வீடியோ கோப்பை தேர்ந்தெடுக்கவும் அல்லது YouTube URL ஒட்டவும்."],
+      ["அகராதி எப்படி வேலை செய்கிறது?", "வசனங்கள் இயங்கும் போது, எந்த வார்த்தையையும் hover செய்யுங்கள் அல்லது கிளிக் செய்யுங்கள் - உடனே அதன் விளக்கம் கிடைக்கும்."],
+      ["வார்த்தைகளை எப்படி சேமிப்பது?", "வார்த்தை popup-இல் 💾 Save Word பொத்தானை கிளிக் செய்யுங்கள். சேமிக்கப்பட்ட வார்த்தைகள் உங்கள் சொல்லகராதி பலகத்தில் தோன்றும்."],
+      ["வினாடி வினா எப்படி எழுதுவது?", "வார்த்தைகளை சேமித்த பிறகு, 'வினாடி வினா' என்பதை கிளிக் செய்யுங்கள். உங்கள் சொல்லகராதியின் அடிப்படையில் கேள்விகள் வரும்."],
+      ["YouTube-உடன் வேலை செய்கிறதா?", "ஆம்! எந்த YouTube URL-ஐயும் ஒட்டுங்கள் - SubLearn தானாகவே வசனங்களை பெற்று interactive-ஆக மாற்றும்."],
+    ],
+    // Contact
+    contactTitle:   "தொடர்பு கொள்ளுங்கள்",
+    contactInfo:    "கேள்வி அல்லது கருத்து உள்ளதா? நாங்கள் கேட்கிறோம்!",
+    yourName:       "உங்கள் பெயர்",
+    namePlaceholder:"உங்கள் பெயரை உள்ளிடுங்கள்",
+    emailPlaceholder:"நீங்கள்@example.com",
+    messagePlaceholder:"உங்கள் செய்தியை எழுதுங்கள்...",
+    sendMessage:    "📧 செய்தி அனுப்பு",
+    messageSent:    "செய்தி அனுப்பப்பட்டது!",
+    replyInfo:      "24 மணி நேரத்தில் பதில் அளிப்போம்.",
+    // Rate
+    rateTitle:      "பயன்பாட்டை மதிப்பிடுங்கள்",
+    rateInfo:       "SubLearn உங்களுக்கு எப்படி இருக்கிறது?",
+    rateLabels:     ["", "மோசம் 😔", "சராசரி 😐", "நல்லது 🙂", "மிகவும் நல்லது 😊", "அற்புதம் 🤩"],
+    commentsLabel:  "கருத்துகள் (விருப்பமானது)",
+    commentPlaceholder: "மேலும் சொல்லுங்கள்...",
+    submitRating:   "மதிப்பீட்டை சமர்ப்பி",
+    thankYou:       "நன்றி!",
+    feedbackHelps:  "உங்கள் கருத்து எங்களை மேம்படுத்த உதவுகிறது.",
+    // Toasts
+    toastSaved:     "✅ கணக்கு சேமிக்கப்பட்டது!",
+    toastDeleted:   "🗑️ தரவு நீக்கப்பட்டது",
+    toastSent:      "📧 செய்தி அனுப்பப்பட்டது!",
+    toastEmptyFields: "⚠️ அனைத்து புலங்களையும் நிரப்பவும்",
+    toastNoStar:    "⚠️ நட்சத்திர மதிப்பை தேர்ந்தெடுக்கவும்",
+    toastStarThanks: (n) => `⭐ ${n} நட்சத்திரங்கள் தந்தமைக்கு நன்றி!`,
+  }
+};
+
+/* ── Context ── */
+const LangContext = createContext();
+export const useLang = () => useContext(LangContext);
+
+export const LangProvider = ({ children }) => {
+  const [lang, setLang] = useState(() => localStorage.getItem("sl_lang_code") || "en");
+
+  const switchLang = (code) => {
+    setLang(code);
+    localStorage.setItem("sl_lang_code", code);
+  };
+
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+
+  return (
+    <LangContext.Provider value={{ lang, switchLang, t }}>
+      {children}
+    </LangContext.Provider>
+  );
+};

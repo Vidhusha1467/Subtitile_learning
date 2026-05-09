@@ -3,6 +3,11 @@ import SubtitleBox from "./components/SubtitleBox";
 import SavedWords from "./components/SavedWords";
 import Quiz from "./components/Quiz";
 import VideoPlayer from "./components/VideoPlayer";
+import HomePage from "./components/HomePage";
+import Dashboard from "./components/Dashboard";
+import UploadPage from "./components/UploadPage";
+import YoutubePage from "./components/YoutubePage";
+import { LangProvider } from "./context/LangContext";
 import "./index.css";
 
 // API base path: Vite proxy forwards /api/* → http://localhost:3000/api/*
@@ -20,12 +25,22 @@ const App = () => {
   const wrapperRef = useRef(null);
 
   // ── Auth State ──
-  const [user, setUser]           = useState(null);
-  const [authMode, setAuthMode]   = useState("login");  // "login" | "signup" | "forgot"
-  const [authForm, setAuthForm]   = useState({ name: "", email: "", password: "" });
+  const [showHome, setShowHome]               = useState(true);
+  const [user, setUser]                        = useState(null);
+  const [showDashboard, setShowDashboard]      = useState(false);
+  const [showUploadPage, setShowUploadPage]    = useState(false);
+  const [showYoutubePage, setShowYoutubePage]  = useState(false);
+  const [authMode, setAuthMode]       = useState("login");
+  const [authForm, setAuthForm]       = useState({ name: "", email: "", password: "" });
   const [authSuccess, setAuthSuccess] = useState("");
-  const [authError, setAuthError] = useState("");
+  const [authError, setAuthError]     = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Called from HomePage with 'login' or 'signup'
+  const handleGetStarted = (mode = "login") => {
+    setAuthMode(mode);
+    setShowHome(false);
+  };
 
   // ── App State ──
   const [videoSrc,       setVideoSrc]    = useState(null);
@@ -91,6 +106,7 @@ const App = () => {
       } else {
         setUser(data.user || { name: authForm.name || authForm.email, email: authForm.email });
         setAuthForm({ name: "", email: "", password: "" });
+        setShowDashboard(true);
       }
     } catch (err) {
       setAuthError(err.message);
@@ -177,12 +193,60 @@ const App = () => {
     }
   };
 
+  /* ── Home Page ── */
+  if (showHome) {
+    return (
+      <LangProvider>
+        <HomePage onGetStarted={handleGetStarted} />
+      </LangProvider>
+    );
+  }
+
+  /* ── Dashboard ── */
+  if (user && showDashboard) {
+    return (
+      <Dashboard
+        user={user}
+        onGoToUpload={()   => { setShowDashboard(false); setShowUploadPage(true); }}
+        onGoToYoutube={()  => { setShowDashboard(false); setShowYoutubePage(true); }}
+      />
+    );
+  }
+
+  /* ── Upload Page ── */
+  if (user && showUploadPage) {
+    return (
+      <UploadPage
+        onBackToDashboard={() => { setShowUploadPage(false); setShowDashboard(true); }}
+        onFileSelect={(e) => { setShowUploadPage(false); handleVideoUpload(e); }}
+      />
+    );
+  }
+
+  /* ── YouTube Page ── */
+  if (user && showYoutubePage) {
+    return (
+      <YoutubePage
+        onBackToDashboard={() => { setShowYoutubePage(false); setShowDashboard(true); }}
+        onSubmit={(url) => { setShowYoutubePage(false); setVideoSrc(url); setVideoName(url); }}
+      />
+    );
+  }
+
   /* ── Auth Screen ── */
   if (!user) {
     return (
       <div className="app">
         <header className="app-header">
           <div className="header-left">
+            <button
+              className="auth-back-btn"
+              onClick={() => setShowHome(true)}
+              id="auth-back-home-btn"
+              title="Back to Home"
+            >
+              ← Back to Home
+            </button>
             <div className="logo">
               <span className="logo-icon">🎬</span>
               <span className="logo-text">SubLearn</span>
@@ -191,141 +255,102 @@ const App = () => {
           </div>
         </header>
 
-        <div className="landing-page">
-          {/* Left Column: Hero Content */}
-          <div className="landing-left">
-            <div className="hero-badge">✨ SubLearn 2.0 is Here</div>
-            <h1 className="hero-title">
-              Master English through your <span className="hero-highlight">favorite videos</span>
-            </h1>
-            <p className="hero-desc">
-              Upload any video, let AI generate interactive subtitles, click any word to instantly learn its meaning, and take gamified quizzes to build your vocabulary.
-            </p>
-            <div className="hero-features">
-              <div className="hf-item">
-                <span className="hf-icon">🤖</span>
-                <span className="hf-text">Smart AI Transcription</span>
-              </div>
-              <div className="hf-item">
-                <span className="hf-icon">👆</span>
-                <span className="hf-text">Interactive Hover Dictionary</span>
-              </div>
-              <div className="hf-item">
-                <span className="hf-icon">🎮</span>
-                <span className="hf-text">Gamified Vocabulary Quizzes</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Auth Card */}
-          <div className="landing-right">
+        {authMode === "signup" ? (
+          /* ── Create Account: centered card only ── */
+          <div className="auth-only-page">
             <div className="auth-card">
               <div className="auth-header">
-                <h2>
-                  {authMode === "login" ? "Welcome Back"
-                    : authMode === "signup" ? "Create Account"
-                    : "Reset Password"}
-                </h2>
-                <p className="auth-subtitle">
-                  {authMode === "login"
-                    ? "Sign in to start learning with subtitles"
-                    : authMode === "signup"
-                    ? "Join SubLearn and start your vocabulary journey"
-                    : "Enter your email and a new password"}
-                </p>
+                <h2>Create Account</h2>
+                <p className="auth-subtitle">Join SubLearn and start your vocabulary journey</p>
               </div>
-
-              <form className="auth-form" onSubmit={handleAuthSubmit} key={authMode} autoComplete="off">
-                {authMode === "signup" && (
-                  <div className="form-group">
-                    <label htmlFor="auth-name">Name</label>
-                    <input
-                      id="auth-name"
-                      type="text"
-                      placeholder="Your name"
-                      autoComplete="off"
-                      value={authForm.name}
-                      onChange={(e) => setAuthForm(p => ({ ...p, name: e.target.value }))}
-                      required
-                    />
-                  </div>
-                )}
-
+              <form className="auth-form" onSubmit={handleAuthSubmit} key="signup" autoComplete="off">
+                <div className="form-group">
+                  <label htmlFor="auth-name">Name</label>
+                  <input id="auth-name" type="text" placeholder="Your name" autoComplete="off"
+                    value={authForm.name} onChange={(e) => setAuthForm(p => ({ ...p, name: e.target.value }))} required />
+                </div>
                 <div className="form-group">
                   <label htmlFor="auth-email">Email</label>
-                  <input
-                    id="auth-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    autoComplete="new-password"
-                    value={authForm.email}
-                    onChange={(e) => setAuthForm(p => ({ ...p, email: e.target.value }))}
-                    required
-                  />
+                  <input id="auth-email" type="email" placeholder="you@example.com" autoComplete="new-password"
+                    value={authForm.email} onChange={(e) => setAuthForm(p => ({ ...p, email: e.target.value }))} required />
                 </div>
-
                 <div className="form-group">
-                  <label htmlFor="auth-password">
-                    {authMode === "forgot" ? "New Password" : "Password"}
-                  </label>
-                  <input
-                    id="auth-password"
-                    type="password"
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    value={authForm.password}
-                    onChange={(e) => setAuthForm(p => ({ ...p, password: e.target.value }))}
-                  required
-                  minLength={4}
-                />
-              </div>
-
-              {authError && <div className="auth-error">⚠ {authError}</div>}
-              {authSuccess && <div className="auth-success">✅ {authSuccess}</div>}
-
-              <button
-                type="submit"
-                className="btn btn-quiz auth-submit-btn"
-                disabled={authLoading}
-              >
-                {authLoading
-                  ? "Please wait…"
-                  : authMode === "login" ? "Sign In →"
-                  : authMode === "signup" ? "Create Account →"
-                  : "Reset Password →"}
-              </button>
-            </form>
-
-            {authMode === "login" && (
-              <div className="auth-forgot">
-                <button className="link-btn" onClick={() => { setAuthMode("forgot"); setAuthError(""); setAuthSuccess(""); }}>
-                  Forgot Password?
+                  <label htmlFor="auth-password">Password</label>
+                  <input id="auth-password" type="password" placeholder="••••••••" autoComplete="new-password"
+                    value={authForm.password} onChange={(e) => setAuthForm(p => ({ ...p, password: e.target.value }))} required minLength={4} />
+                </div>
+                {authError   && <div className="auth-error">⚠ {authError}</div>}
+                {authSuccess && <div className="auth-success">✅ {authSuccess}</div>}
+                <button type="submit" className="btn btn-quiz auth-submit-btn" disabled={authLoading}>
+                  {authLoading ? "Please wait…" : "Create Account →"}
                 </button>
+              </form>
+              <div className="auth-toggle">
+                <p>Already have an account?{" "}
+                  <button className="link-btn" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthSuccess(""); }}>Sign In</button>
+                </p>
               </div>
-            )}
-
-            <div className="auth-toggle">
-              {authMode === "login" ? (
-                <p>
-                  Don't have an account?{" "}
-                  <button className="link-btn" onClick={() => { setAuthMode("signup"); setAuthError(""); setAuthSuccess(""); }}>
-                    Sign Up
-                  </button>
-                </p>
-              ) : (
-                <p>
-                  {authMode === "forgot" ? "Remember your password?" : "Already have an account?"}{" "}
-                  <button className="link-btn" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthSuccess(""); }}>
-                    Sign In
-                  </button>
-                </p>
-              )}
-            </div>
             </div>
           </div>
-        </div>
+        ) : (
+          /* ── Login / Forgot: two-column layout with hero ── */
+          <div className="landing-page">
+            <div className="landing-left">
+              <div className="hero-badge">✨ SubLearn 2.0 is Here</div>
+              <h1 className="hero-title">Master English through your <span className="hero-highlight">favorite videos</span></h1>
+              <p className="hero-desc">Upload any video, let AI generate interactive subtitles, click any word to instantly learn its meaning, and take gamified quizzes to build your vocabulary.</p>
+              <div className="hero-features">
+                <div className="hf-item"><span className="hf-icon">🤖</span><span className="hf-text">Smart AI Transcription</span></div>
+                <div className="hf-item"><span className="hf-icon">👆</span><span className="hf-text">Interactive Hover Dictionary</span></div>
+                <div className="hf-item"><span className="hf-icon">🎮</span><span className="hf-text">Gamified Vocabulary Quizzes</span></div>
+              </div>
+            </div>
+            <div className="landing-right">
+              <div className="auth-card">
+                <div className="auth-header">
+                  <h2>{authMode === "login" ? "Welcome Back" : "Reset Password"}</h2>
+                  <p className="auth-subtitle">{authMode === "login" ? "Sign in to start learning with subtitles" : "Enter your email and a new password"}</p>
+                </div>
+                <form className="auth-form" onSubmit={handleAuthSubmit} key={authMode} autoComplete="off">
+                  <div className="form-group">
+                    <label htmlFor="auth-email">Email</label>
+                    <input id="auth-email" type="email" placeholder="you@example.com" autoComplete="new-password"
+                      value={authForm.email} onChange={(e) => setAuthForm(p => ({ ...p, email: e.target.value }))} required />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="auth-password">{authMode === "forgot" ? "New Password" : "Password"}</label>
+                    <input id="auth-password" type="password" placeholder="••••••••" autoComplete="new-password"
+                      value={authForm.password} onChange={(e) => setAuthForm(p => ({ ...p, password: e.target.value }))} required minLength={4} />
+                  </div>
+                  {authError   && <div className="auth-error">⚠ {authError}</div>}
+                  {authSuccess && <div className="auth-success">✅ {authSuccess}</div>}
+                  <button type="submit" className="btn btn-quiz auth-submit-btn" disabled={authLoading}>
+                    {authLoading ? "Please wait…" : authMode === "login" ? "Sign In →" : "Reset Password →"}
+                  </button>
+                </form>
+                {authMode === "login" && (
+                  <div className="auth-forgot">
+                    <button className="link-btn" onClick={() => { setAuthMode("forgot"); setAuthError(""); setAuthSuccess(""); }}>Forgot Password?</button>
+                  </div>
+                )}
+                <div className="auth-toggle">
+                  {authMode === "login" ? (
+                    <p>Don't have an account?{" "}
+                      <button className="link-btn" onClick={() => { setAuthMode("signup"); setAuthError(""); setAuthSuccess(""); }}>Sign Up</button>
+                    </p>
+                  ) : (
+                    <p>Remember your password?{" "}
+                      <button className="link-btn" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthSuccess(""); }}>Sign In</button>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
+
   }
 
   /* ── How It Works Page ── */
@@ -334,16 +359,17 @@ const App = () => {
       <div className="app">
         <header className="app-header">
           <div className="header-left">
-            <div className="logo" onClick={() => setCurrentView("main")} style={{ cursor: "pointer" }}>
+            <button className="auth-back-btn" onClick={() => { setShowDashboard(true); setVideoSrc(null); setVideoName(""); setSubtitles([]); setCurrentView("main"); }}>
+              ← Back to Dashboard
+            </button>
+            <div className="logo">
               <span className="logo-icon">🎬</span>
               <span className="logo-text">SubLearn</span>
             </div>
             <p className="tagline">AI-Powered Subtitle Learning</p>
           </div>
           <div className="header-right">
-            <button className="upload-btn" onClick={() => setCurrentView("main")}>
-              ← Back to App
-            </button>
+            <button className="upload-btn" onClick={() => setCurrentView("main")}>← Back to App</button>
           </div>
         </header>
 
@@ -403,6 +429,13 @@ const App = () => {
       {/* ── Header ── */}
       <header className="app-header">
         <div className="header-left">
+          <button
+            className="auth-back-btn"
+            onClick={() => { setShowDashboard(true); setVideoSrc(null); setVideoName(""); setSubtitles([]); }}
+            title="Back to Dashboard"
+          >
+            ← Dashboard
+          </button>
           <div className="logo">
             <span className="logo-icon">🎬</span>
             <span className="logo-text">SubLearn</span>
@@ -484,6 +517,17 @@ const App = () => {
               </div>
             )}
 
+            {/* ── Subtitle overlay — inside the video ── */}
+            <div className="subtitle-overlay">
+              <SubtitleBox
+                subtitle={activeSubtitle}
+                currentTime={currentTime}
+                onSaveWord={handleSaveWord}
+                videoRef={videoRef}
+                targetLanguage={targetLanguage}
+              />
+            </div>
+
             {/* Custom fullscreen button */}
             {videoSrc && (
               <button
@@ -493,13 +537,6 @@ const App = () => {
               >
                 {isFullscreen ? "⊠" : "⛶"}
               </button>
-            )}
-
-            {/* Subtitle overlay inside video */}
-            {subtitles.length > 0 && (
-              <div className="subtitle-overlay">
-                <SubtitleBox subtitle={activeSubtitle} onSaveWord={handleSaveWord} videoRef={videoRef} targetLanguage={targetLanguage} />
-              </div>
             )}
           </div>
 
