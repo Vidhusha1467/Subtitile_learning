@@ -6,7 +6,6 @@ import VideoPlayer from "./components/VideoPlayer";
 import HomePage from "./components/HomePage";
 import Dashboard from "./components/Dashboard";
 import UploadPage from "./components/UploadPage";
-import YoutubePage from "./components/YoutubePage";
 import { LangProvider } from "./context/LangProvider";
 import "./index.css";
 
@@ -29,7 +28,6 @@ const App = () => {
   const [user, setUser]                        = useState(null);
   const [showDashboard, setShowDashboard]      = useState(false);
   const [showUploadPage, setShowUploadPage]    = useState(false);
-  const [showYoutubePage, setShowYoutubePage]  = useState(false);
   const [authMode, setAuthMode]       = useState("login");
   const [authForm, setAuthForm]       = useState({ name: "", email: "", password: "" });
   const [authSuccess, setAuthSuccess] = useState("");
@@ -163,12 +161,22 @@ const App = () => {
       setTxMessage(`❌ ${err.message}`);
     }
   }, []);
+  
 
 
 
-  const handleTimeUpdate = () => {
-    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
-  };
+
+  const handleTimeUpdate = useCallback((time) => {
+    if (typeof time === "number") {
+      setCurrentTime(time);
+    } else if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  }, []);
+
+  const handleVideoEnded = useCallback(() => {
+    setShowSessionEnd(true);
+  }, []);
 
   const handleSaveWord = (word) => {
     setSavedWords(prev => prev.includes(word) ? prev : [...prev, word]);
@@ -180,12 +188,20 @@ const App = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const onFSChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
+    const onFSChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onFSChange);
     return () => document.removeEventListener("fullscreenchange", onFSChange);
   }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (showSessionEnd || showQuiz) {
+      root.classList.add("no-scroll");
+    } else {
+      root.classList.remove("no-scroll");
+    }
+    return () => root.classList.remove("no-scroll");
+  }, [showSessionEnd, showQuiz]);
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
@@ -210,7 +226,6 @@ const App = () => {
       <Dashboard
         user={user}
         onGoToUpload={()   => { setShowDashboard(false); setShowUploadPage(true); }}
-        onGoToYoutube={()  => { setShowDashboard(false); setShowYoutubePage(true); }}
       />
     );
   }
@@ -225,15 +240,7 @@ const App = () => {
     );
   }
 
-  /* ── YouTube Page ── */
-  if (user && showYoutubePage) {
-    return (
-      <YoutubePage
-        onBackToDashboard={() => { setShowYoutubePage(false); setShowDashboard(true); }}
-        onSubmit={(url) => { setShowYoutubePage(false); setVideoSrc(url); setVideoName(url); }}
-      />
-    );
-  }
+
 
   /* ── Auth Screen ── */
   if (!user) {
@@ -510,10 +517,7 @@ const App = () => {
                 videoSrc={videoSrc}
                 videoRef={videoRef}
                 onTimeUpdate={handleTimeUpdate}
-                onEnded={() => {
-                  // Show the premium end screen
-                  setShowSessionEnd(true);
-                }}
+                onEnded={handleVideoEnded}
               />
             ) : (
               <div className="video-placeholder">
@@ -526,7 +530,7 @@ const App = () => {
             {/* ── Session Complete Overlay ── */}
             {showSessionEnd && (
               <div className="session-end-overlay">
-                <div className="session-end-container">
+                <div className="session-end-card">
                   <div className="se-header">
                     <span className="se-badge">SESSION COMPLETE</span>
                     <h1 className="se-title">Great Job, <span className="se-user">{user.name || "Explorer"}!</span></h1>
@@ -542,13 +546,22 @@ const App = () => {
                     <div className="se-stat-card se-stat-highlight">
                       <span className="se-stat-icon">💎</span>
                       <span className="se-stat-value">{savedWords.length}</span>
-                      <span className="se-stat-label">New Words Saved</span>
+                      <span className="se-stat-label">Words Saved</span>
                     </div>
                   </div>
+
+                  {savedWords.length > 0 && (
+                    <div className="se-words-preview">
+                      <p className="se-words-title">Your New Vocabulary:</p>
+                      <div className="se-words-list">
+                        {savedWords.map(w => <span key={w} className="se-word-tag">{w}</span>)}
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="se-footer-actions">
                     {savedWords.length >= 2 ? (
-                      <button className="se-main-btn" onClick={() => { setShowSessionEnd(false); setShowQuiz(true); }}>
+                      <button className="se-btn-main" onClick={() => { setShowSessionEnd(false); setShowQuiz(true); }}>
                         <span className="btn-text">Practice with Quiz</span>
                         <span className="btn-icon">→</span>
                       </button>
@@ -558,7 +571,7 @@ const App = () => {
                         Save {2 - savedWords.length} more words to unlock the quiz!
                       </div>
                     )}
-                    <button className="se-sub-btn" onClick={() => setShowSessionEnd(false)}>
+                    <button className="se-btn-sub" onClick={() => setShowSessionEnd(false)}>
                       ↺ Watch Again
                     </button>
                   </div>

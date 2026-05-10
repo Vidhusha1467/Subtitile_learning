@@ -30,6 +30,8 @@ const Quiz = ({ words, onClose }) => {
   const [isAnswering, setIsAnswering] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
   const [shake, setShake] = useState(false);
+  const [correctWords, setCorrectWords] = useState([]);
+  const [wrongWords, setWrongWords] = useState([]);
 
   // 1. Build Quiz Data with AI Distractors
   useEffect(() => {
@@ -92,14 +94,15 @@ const Quiz = ({ words, onClose }) => {
     const isCorrect = option === q.correctDef;
 
     if (isCorrect) {
-      const speedBonus = Math.floor(timeLeft / 2);
-      const streakBonus = streak * 5;
-      setScore(s => s + 10 + speedBonus + streakBonus);
+
+      setScore(s => s + 5);
       setStreak(s => s + 1);
+      setCorrectWords(prev => [...prev, q.word]);
     } else {
       setLives(l => l - 1);
       setStreak(0);
       setShake(true);
+      setWrongWords(prev => [...prev, q.word]);
       setTimeout(() => setShake(false), 500);
       
       if (lives <= 1) {
@@ -118,7 +121,7 @@ const Quiz = ({ words, onClose }) => {
         setQuizFinished(true);
       }
     }, 1500);
-  }, [isAnswering, questions, currentIndex, timeLeft, streak, lives, quizFinished]);
+  }, [isAnswering, questions, currentIndex, lives, quizFinished]);
 
   // Timer
   useEffect(() => {
@@ -154,7 +157,26 @@ const Quiz = ({ words, onClose }) => {
           <span className="se-confetti">{isVictory ? "👑" : "💀"}</span>
           <h2>{isVictory ? "Quiz Mastered!" : "Game Over"}</h2>
           <p className="se-stat">Final Score: <strong>{score}</strong></p>
-          <p className="se-stat">Correct Answers: <strong>{questions.length - (MAX_LIVES - lives)}</strong></p>
+          
+          <div className="quiz-summary-results">
+            {correctWords.length > 0 && (
+              <div className="summary-group">
+                <h3>✅ Correct Words</h3>
+                <div className="summary-list">
+                  {correctWords.map(w => <span key={w} className="summary-word tag-correct">{w}</span>)}
+                </div>
+              </div>
+            )}
+            {wrongWords.length > 0 && (
+              <div className="summary-group">
+                <h3>❌ Words to Review</h3>
+                <div className="summary-list">
+                  {wrongWords.map(w => <span key={w} className="summary-word tag-wrong">{w}</span>)}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="se-actions">
             <button className="btn-quiz se-btn-main" onClick={onClose}>
               Awesome!

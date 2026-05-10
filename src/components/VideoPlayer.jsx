@@ -1,26 +1,24 @@
+
 /**
- * VideoPlayer — plays local video files using a native <video> element.
+ * VideoPlayer — plays local video files or YouTube videos.
  */
 const VideoPlayer = ({ videoSrc, videoRef, onTimeUpdate, onEnded }) => {
   return (
-    <div className="video-container">
-
-      {/* ── Local file player */}
+    <div className="video-container" style={{ width: '100%', height: '100%', background: '#000', position: 'relative' }}>
       {videoSrc ? (
         <video
           ref={videoRef}
           src={videoSrc}
           controls
-          onTimeUpdate={onTimeUpdate}
+          onTimeUpdate={(e) => onTimeUpdate(e.target.currentTime)}
           onEnded={onEnded}
           className="video-el"
-          style={{ width: '100%', height: '100%', borderRadius: '12px', background: '#000' }}
+          style={{ width: '100%', height: '100%', borderRadius: '12px' }}
         />
       ) : (
-        /* ── Empty state */
         <div className="video-placeholder">
           <div className="placeholder-icon">▶</div>
-          <p>Upload a video to begin learning</p>
+          <p>Upload a video to begin</p>
         </div>
       )}
     </div>

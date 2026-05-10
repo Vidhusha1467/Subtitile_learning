@@ -5,7 +5,7 @@ export const TRANSLATIONS = {
     title1:     "Learn English through your",
     title2:     "favorite videos",
     sub:        "Upload any video · AI captions · Click words to learn · Quiz yourself",
-    pills:      ["🤖 AI Transcription", "👆 Hover Dictionary", "🎮 Vocab Quizzes", "🌐 YouTube Support"],
+    pills:      ["🤖 AI Transcription", "👆 Hover Dictionary", "🎮 Vocab Quizzes"],
     getStarted: "🚀 Get Started Free",
     signIn:     "Sign In →",
     // Theme
@@ -50,11 +50,11 @@ export const TRANSLATIONS = {
     helpTitle:      "Help & FAQ",
     helpInfo:       "Frequently asked questions about SubLearn.",
     faqs: [
-      ["How do I upload a video?", "Click the Upload button on the main page and select a local video file, or paste a YouTube URL into the input field."],
+      ["How do I upload a video?", "Click the Upload button on the main page and select a local video file from your computer."],
       ["How does the dictionary work?", "While subtitles play, hover or click any word to instantly see its definition, part of speech, and an example sentence."],
       ["How do I save words?", "Click the 💾 Save Word button inside the word popup. All saved words appear in your Vocabulary panel."],
       ["How do I take a quiz?", "After saving words, click 'Take Quiz' in the saved words panel. You'll get multiple-choice questions based on your vocabulary."],
-      ["Does it work with YouTube?", "Yes! Paste any YouTube URL and SubLearn will automatically fetch the captions and make them interactive."],
+      ["Is my data safe?", "Yes! Your uploaded videos are processed securely and deleted immediately after transcription is complete."],
     ],
     // Contact
     contactTitle:   "Contact Us",
@@ -90,7 +90,7 @@ export const TRANSLATIONS = {
     title1:     "உங்கள் விருப்பமான வீடியோக்கள் மூலம்",
     title2:     "ஆங்கிலம் கற்றுக்கொள்ளுங்கள்",
     sub:        "எந்த வீடியோவையும் பதிவேற்றுங்கள் · AI வசனங்கள் · வார்த்தைகளை கற்கவும் · வினாடி வினா எழுதவும்",
-    pills:      ["🤖 AI படியெடுப்பு", "👆 நேரடி அகராதி", "🎮 சொல் வினாடி வினா", "🌐 YouTube ஆதரவு"],
+    pills:      ["🤖 AI படியெடுப்பு", "👆 நேரடி அகராதி", "🎮 சொல் வினாடி வினா"],
     getStarted: "🚀 இலவசமாக தொடங்குங்கள்",
     signIn:     "உள்நுழைய →",
     // Theme
@@ -135,11 +135,11 @@ export const TRANSLATIONS = {
     helpTitle:      "உதவி & கேள்விகள்",
     helpInfo:       "SubLearn பற்றி அடிக்கடி கேட்கப்படும் கேள்விகள்.",
     faqs: [
-      ["வீடியோவை எப்படி பதிவேற்றுவது?", "பிரதான பக்கத்தில் பதிவேற்று பொத்தானை கிளிக் செய்து உள்ளூர் வீடியோ கோப்பை தேர்ந்தெடுக்கவும் அல்லது YouTube URL ஒட்டவும்."],
+      ["வீடியோவை எப்படி பதிவேற்றுவது?", "பிரதான பக்கத்தில் பதிவேற்று பொத்தானை கிளிக் செய்து உள்ளூர் வீடியோ கோப்பை தேர்ந்தெடுக்கவும்."],
       ["அகராதி எப்படி வேலை செய்கிறது?", "வசனங்கள் இயங்கும் போது, எந்த வார்த்தையையும் hover செய்யுங்கள் அல்லது கிளிக் செய்யுங்கள் - உடனே அதன் விளக்கம் கிடைக்கும்."],
       ["வார்த்தைகளை எப்படி சேமிப்பது?", "வார்த்தை popup-இல் 💾 Save Word பொத்தானை கிளிக் செய்யுங்கள். சேமிக்கப்பட்ட வார்த்தைகள் உங்கள் சொல்லகராதி பலகத்தில் தோன்றும்."],
       ["வினாடி வினா எப்படி எழுதுவது?", "வார்த்தைகளை சேமித்த பிறகு, 'வினாடி வினா' என்பதை கிளிக் செய்யுங்கள். உங்கள் சொல்லகராதியின் அடிப்படையில் கேள்விகள் வரும்."],
-      ["YouTube-உடன் வேலை செய்கிறதா?", "ஆம்! எந்த YouTube URL-ஐயும் ஒட்டுங்கள் - SubLearn தானாகவே வசனங்களை பெற்று interactive-ஆக மாற்றும்."],
+      ["எனது தரவு பாதுகாப்பானதா?", "ஆம்! உங்கள் வீடியோக்கள் பாதுகாப்பாக செயலாக்கப்பட்டு, படியெடுப்பு முடிந்ததும் உடனடியாக நீக்கப்படும்."],
     ],
     // Contact
     contactTitle:   "தொடர்பு கொள்ளுங்கள்",
