@@ -240,29 +240,120 @@ router.post("/transcribe-youtube", async (req, res) => {
   }
 });
 
-// ── Helpers ───────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// POST /api/dictionary
+// Body: { word: string, context: string }
+// Returns: { word, definition, partOfSpeech, example }
+// Uses Gemini to provide context-aware definitions.
+// ─────────────────────────────────────────────────────────────
+router.post("/dictionary", async (req, res) => {
+  const { word, context } = req.body;
+  if (!word) return res.status(400).json({ error: "Word is required." });
 
-/**
- * Extract YouTube video ID from any URL format.
- * Supports: youtu.be/ID, youtube.com/watch?v=ID, /embed/ID, /shorts/ID, etc.
- */
-function extractVideoId(url) {
-  if (!url) return null;
-  const patterns = [
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey || geminiKey === "your_gemini_api_key_here") {
+    return res.status(503).json({ error: "Gemini API key not configured on server." });
   }
-  // Maybe it's just a raw ID
-  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
-  return null;
-}
+
+  try {
+    const prompt = `
+      You are a helpful language learning assistant. 
+      Provide a concise dictionary entry for the word "${word}" based on its usage in this sentence: "${context}".
+      
+      Return ONLY a JSON object with this structure:
+      {
+        "word": "${word}",
+        "partOfSpeech": "...",
+        "definition": "definition related to the context...",
+        "example": "a new original example sentence using the word..."
+      }
+    `;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error?.message || "Gemini API call failed");
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!text) throw new Error("No response from Gemini");
+
+    const result = JSON.parse(text);
+    res.json(result);
+
+  } catch (err) {
+    console.error("❌ Dictionary error:", err.message);
+    res.status(500).json({ error: "Failed to fetch AI definition." });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/quiz-distractors
+// Body: { word: string, correctDef: string }
+// Returns: { distractors: [string, string, string] }
+// Uses Gemini to generate contextually plausible but wrong meanings.
+// ─────────────────────────────────────────────────────────────
+router.post("/quiz-distractors", async (req, res) => {
+  const { word, correctDef } = req.body;
+  if (!word) return res.status(400).json({ error: "Word is required." });
+
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey || geminiKey === "your_gemini_api_key_here") {
+    return res.status(503).json({ error: "Gemini API key not configured." });
+  }
+
+  try {
+    const prompt = `
+      You are a language teacher creating a multiple choice quiz.
+      For the English word "${word}", the correct definition is: "${correctDef}".
+      
+      Generate exactly 3 "distractors" (wrong answers).
+      The distractors should be:
+      1. Plausible and sound like real dictionary definitions.
+      2. Related to the word's theme but clearly incorrect.
+      3. Short (one sentence).
+      
+      Return ONLY a JSON object:
+      {
+        "distractors": ["...", "...", "..."]
+      }
+    `;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
+      }
+    );
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const result = JSON.parse(text);
+    res.json(result);
+
+  } catch (err) {
+    console.error("❌ Distractor error:", err.message);
+    res.status(500).json({ error: "Failed to generate AI distractors." });
+  }
+});
 
 /**
  * Run ffmpeg to extract a mono 16kHz WAV from any video file.

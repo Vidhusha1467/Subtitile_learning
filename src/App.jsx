@@ -7,7 +7,7 @@ import HomePage from "./components/HomePage";
 import Dashboard from "./components/Dashboard";
 import UploadPage from "./components/UploadPage";
 import YoutubePage from "./components/YoutubePage";
-import { LangProvider } from "./context/LangContext";
+import { LangProvider } from "./context/LangProvider";
 import "./index.css";
 
 // API base path: Vite proxy forwards /api/* → http://localhost:3000/api/*
@@ -53,6 +53,7 @@ const App = () => {
   const [progress,       setProgress]    = useState(0);
   const [savedWords,     setSavedWords]  = useState([]);
   const [showQuiz,       setShowQuiz]    = useState(false);
+  const [showSessionEnd, setShowSessionEnd] = useState(false);
   const [currentView,    setCurrentView] = useState("main");
   const [userMenuOpen,   setUserMenuOpen] = useState(false);
   const [targetLanguage] = useState("none");
@@ -131,6 +132,7 @@ const App = () => {
     setSubtitles([]);
     setSavedWords([]);
     setShowQuiz(false);
+    setShowSessionEnd(false);
     setProgress(0);
 
     // ── Upload to backend ──
@@ -508,6 +510,10 @@ const App = () => {
                 videoSrc={videoSrc}
                 videoRef={videoRef}
                 onTimeUpdate={handleTimeUpdate}
+                onEnded={() => {
+                  // Show the premium end screen
+                  setShowSessionEnd(true);
+                }}
               />
             ) : (
               <div className="video-placeholder">
@@ -517,16 +523,61 @@ const App = () => {
               </div>
             )}
 
+            {/* ── Session Complete Overlay ── */}
+            {showSessionEnd && (
+              <div className="session-end-overlay">
+                <div className="session-end-container">
+                  <div className="se-header">
+                    <span className="se-badge">SESSION COMPLETE</span>
+                    <h1 className="se-title">Great Job, <span className="se-user">{user.name || "Explorer"}!</span></h1>
+                    <p className="se-subtitle">You've just leveled up your vocabulary skills.</p>
+                  </div>
+
+                  <div className="se-stats-row">
+                    <div className="se-stat-card">
+                      <span className="se-stat-icon">📜</span>
+                      <span className="se-stat-value">{subtitles.length}</span>
+                      <span className="se-stat-label">Captions Explored</span>
+                    </div>
+                    <div className="se-stat-card se-stat-highlight">
+                      <span className="se-stat-icon">💎</span>
+                      <span className="se-stat-value">{savedWords.length}</span>
+                      <span className="se-stat-label">New Words Saved</span>
+                    </div>
+                  </div>
+                  
+                  <div className="se-footer-actions">
+                    {savedWords.length >= 2 ? (
+                      <button className="se-main-btn" onClick={() => { setShowSessionEnd(false); setShowQuiz(true); }}>
+                        <span className="btn-text">Practice with Quiz</span>
+                        <span className="btn-icon">→</span>
+                      </button>
+                    ) : (
+                      <div className="se-lock-hint">
+                        <span className="lock-icon">🔒</span>
+                        Save {2 - savedWords.length} more words to unlock the quiz!
+                      </div>
+                    )}
+                    <button className="se-sub-btn" onClick={() => setShowSessionEnd(false)}>
+                      ↺ Watch Again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── Subtitle overlay — inside the video ── */}
-            <div className="subtitle-overlay">
-              <SubtitleBox
-                subtitle={activeSubtitle}
-                currentTime={currentTime}
-                onSaveWord={handleSaveWord}
-                videoRef={videoRef}
-                targetLanguage={targetLanguage}
-              />
-            </div>
+            {!showQuiz && !showSessionEnd && (
+              <div className="subtitle-overlay">
+                <SubtitleBox
+                  subtitle={activeSubtitle}
+                  currentTime={currentTime}
+                  onSaveWord={handleSaveWord}
+                  videoRef={videoRef}
+                  targetLanguage={targetLanguage}
+                />
+              </div>
+            )}
 
             {/* Custom fullscreen button */}
             {videoSrc && (

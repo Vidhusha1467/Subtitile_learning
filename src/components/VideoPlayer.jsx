@@ -1,7 +1,7 @@
 /**
  * VideoPlayer — plays local video files using a native <video> element.
  */
-const VideoPlayer = ({ videoSrc, videoRef, onTimeUpdate }) => {
+const VideoPlayer = ({ videoSrc, videoRef, onTimeUpdate, onEnded }) => {
   return (
     <div className="video-container">
 
@@ -12,6 +12,7 @@ const VideoPlayer = ({ videoSrc, videoRef, onTimeUpdate }) => {
           src={videoSrc}
           controls
           onTimeUpdate={onTimeUpdate}
+          onEnded={onEnded}
           className="video-el"
           style={{ width: '100%', height: '100%', borderRadius: '12px', background: '#000' }}
         />
